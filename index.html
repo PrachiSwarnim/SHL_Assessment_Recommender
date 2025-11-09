@@ -137,7 +137,6 @@
       transition: 0.2s;
     }
 
-    /* Tag container: wraps neatly after 4 tags */
     td:nth-child(3) {
       display: flex;
       flex-wrap: wrap;
@@ -145,7 +144,6 @@
       align-items: center;
     }
 
-    /* Type Tags with hover tooltip */
     .tag {
       position: relative;
       display: inline-flex;
@@ -230,12 +228,10 @@
 </head>
 <body>
   <h1>SHL Assessment Recommender</h1>
-
   <div class="container">
     <input id="query" placeholder="Enter a job description or query...">
     <button onclick="recommend()">Get Recommendations</button>
     <div id="loading">Analyzing your query and fetching SHL assessments...</div>
-
     <table id="results" style="display:none;">
       <thead>
         <tr>
@@ -247,7 +243,6 @@
       <tbody></tbody>
     </table>
   </div>
-
   <script>
     async function recommend() {
       const query = document.getElementById('query').value.trim();
@@ -320,11 +315,10 @@
           row.appendChild(typeCell);
           tbody.appendChild(row);
         });
-
       } catch (err) {
         loading.style.display = 'none';
         alert('Error fetching recommendations: ' + err.message);
-        console.error('❌ API Error:', err);
+        console.error('API Error:', err);
       }
     }
   </script>

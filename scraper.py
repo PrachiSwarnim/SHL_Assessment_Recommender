@@ -1,23 +1,29 @@
+# Importing libraries
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import re
 
+# Base URL for SHL individual assessment listings
 BASE_URL = "https://www.shl.com/products/product-catalog/?start={}&type=1&type=1"
-OUTPUT_FILE = "shl_individual_tests_full.csv"
+
+# Output file for the scraped data
+OUTPUT_FILE = "SHL_Scraped_Assessments.csv"
+
 
 def clean_text(text):
-    """Normalize whitespace."""
+    """Cleans up any extra spaces, tabs, or newlines from the extracted text."""
     return re.sub(r"\s+", " ", text.strip()) if text else ""
 
+
 def parse_table_row(row):
-    """Extract test data from a single <tr>."""
+    """Extracts key assessment details from a single HTML <tr> row."""
     cols = row.find_all("td")
     if len(cols) < 4:
-        return None
+        return None  # Skip incomplete or malformed rows
 
-    # Name and URL
+    # Extracting assessment name and URL
     name_tag = cols[0].find("a")
     if not name_tag:
         return None
@@ -25,15 +31,15 @@ def parse_table_row(row):
     name = clean_text(name_tag.text)
     url = "https://www.shl.com" + name_tag["href"].strip()
 
-    # Skip pre-packaged job bundles
+    # Skipping job bundles, packages, or pre-packed solutions
     if any(kw in url.lower() for kw in ["solution", "bundle", "package", "suite"]):
         return None
 
-    # Remote Testing / Adaptive
+    # Extracting Remote Testing and Adaptive/IRT availability
     remote = "Yes" if cols[1].find("span", class_="-yes") else "No"
     adaptive = "Yes" if cols[2].find("span", class_="-yes") else "No"
 
-    # Test Type
+    # Extracting test type tags (A, B, C, D, E, K, P, S)
     types = [t.text.strip() for t in cols[3].find_all("span", class_="product-catalogue__key")]
     test_type = ", ".join(types) if types else "-"
 
@@ -45,46 +51,50 @@ def parse_table_row(row):
         "Test_Type": test_type
     }
 
-def main():
-    print("🚀 Scraping SHL Individual Test Solutions with Test Type info...\n")
 
+def main():
+    """Scrapes all individual SHL assessments across all catalog pages."""
     all_rows = []
     total_collected = 0
-    start_values = [i * 12 for i in range(34)]  # 12 rows per page, ~34 pages
+
+    # There are 34 pages of results, each showing 12 items
+    start_values = [i * 12 for i in range(34)]
 
     for start in start_values:
         page_url = BASE_URL.format(start)
-        print(f"📄 Fetching page: {page_url}")
+        print(f"📄 Fetching page starting at {start} → {page_url}")
 
-        resp = requests.get(page_url, timeout=20)
-        if resp.status_code != 200:
-            print(f"⚠️ Skipped page start={start} (status {resp.status_code})")
+        try:
+            resp = requests.get(page_url, timeout=20)
+            if resp.status_code != 200:
+                continue
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+            table = soup.find("table")
+
+            # Skipping pages with empty results
+            if not table:
+                continue
+
+            # Parsing each table row excluding the header
+            for row in table.find_all("tr")[1:]:
+                data = parse_table_row(row)
+                if data:
+                    all_rows.append(data)
+                    total_collected += 1
+
+            time.sleep(1.5)  
+
+        except Exception:
+            time.sleep(3)
             continue
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        table = soup.find("table")
-
-        if not table:
-            print("⚠️ No table found, skipping...")
-            continue
-
-        for row in table.find_all("tr")[1:]:  # skip header row
-            data = parse_table_row(row)
-            if data:
-                all_rows.append(data)
-                total_collected += 1
-                print(f"✅ {data['Assessment_Name']} | Type: {data['Test_Type']} | Remote: {data['Remote_Testing']}")
-
-        print(f"➡️ Page with start={start} done. Total so far: {total_collected}")
-        time.sleep(1.5)
-
-    # Save all results
+    # Convert all scraped rows into a DataFrame and remove duplicates
     df = pd.DataFrame(all_rows).drop_duplicates(subset=["Assessment_Url"])
+
+    # Save final dataset
     df.to_csv(OUTPUT_FILE, index=False)
 
-    print("\n🎯 Done!")
-    print(f"✅ Total tests collected: {len(df)}")
-    print(f"📁 Saved to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()

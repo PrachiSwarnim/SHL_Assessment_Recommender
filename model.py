@@ -1,3 +1,4 @@
+# Importing libraries
 import numpy as np
 import urllib.parse
 import re
@@ -9,32 +10,35 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 class SHLRecommender:
     def __init__(self, catalog_df):
         """
-        Initialize recommender with catalog DataFrame.
-        Uses Assessment_Name as text column and includes Remote/Adaptive/Test Type metadata.
+        Initialize the recommender system with a given SHL assessment catalog.
+        The catalog is a DataFrame containing assessment details such as name, URL, and test type.
         """
         self.catalog_df = catalog_df.copy()
 
-        # --- Validate and normalize columns ---
+        # Checking for essential columns
         required_cols = ["Assessment_Name", "Assessment_Url"]
         for col in required_cols:
             if col not in self.catalog_df.columns:
-                raise ValueError(f"❌ Missing required column: {col}")
+                raise ValueError(f"Missing required column: {col}")
 
-        # Normalize column names
+        # Cleaning up column names (capitalization and removing spaces)
         self.catalog_df.columns = [c.strip().replace(" ", "_").title() for c in self.catalog_df.columns]
 
+        # Adding a default Test_Type column if not present
         if "Test_Type" not in self.catalog_df.columns:
             self.catalog_df["Test_Type"] = "-"
 
-        # --- Build TF-IDF Matrix ---
+        # Preparing the TF-IDF matrix using Assessment_Name as the main textual feature
         self.text_col = "Assessment_Name"
         self.vectorizer = TfidfVectorizer(stop_words="english")
         self.matrix = self.vectorizer.fit_transform(self.catalog_df[self.text_col].fillna(""))
 
-    # ------------------------------------------------------------
-    # Infer SHL Test Type (A, B, C, D, E, K, P, S)
-    # ------------------------------------------------------------
+    # Infers SHL Test Type if missing or unclear
     def infer_test_type(self, text):
+        """
+        Try to guess the SHL test type (A, B, C, D, E, K, P, S)
+        based on keywords found in the assessment name or URL.
+        """
         text = text.lower()
 
         test_type_keywords = {
@@ -50,28 +54,34 @@ class SHLRecommender:
             "S": ["simulation", "roleplay", "virtual", "scenario-based"]
         }
 
+        # If a keyword matches, return the associated test type letter
         for key, words in test_type_keywords.items():
             if any(w in text for w in words):
                 return key
 
         return "-"
 
-    # ------------------------------------------------------------
-    # Recommendation Logic
-    # ------------------------------------------------------------
+    # Main Recommendation Logic
     def recommend(self, query: str, top_k: int = 10):
+        """
+        Given a query (like a job description or hiring requirement),
+        this function returns the top_k most relevant SHL assessments.
+        """
         if not query.strip():
             return []
 
-        # Compute similarity
+        # Converting the query into TF-IDF vector form and calculating cosine similarity
         q_vec = self.vectorizer.transform([query])
         scores = cosine_similarity(q_vec, self.matrix).flatten()
+
+        # Cleaning up any NaN or infinity values
         scores = np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
 
+        # Attaching similarity scores to the catalog
         df = self.catalog_df.copy()
         df["score"] = np.round(scores, 4).astype(float)
 
-        # Handle multi-type or missing Test_Type
+        # Ensuring each test has a valid Test_Type — infer if missing or unclear
         df["Test_Type"] = df.apply(
             lambda row: row["Test_Type"]
             if isinstance(row["Test_Type"], str) and any(t in row["Test_Type"].upper() for t in list("ABCDEKPS"))
@@ -79,10 +89,10 @@ class SHLRecommender:
             axis=1
         )
 
-        # Sort by score
+        # Ranking the assessments by descending similarity score
         df = df.sort_values("score", ascending=False)
 
-        # Balance test types if possible
+        # Slightly balance between Knowledge (K) and Personality (P) tests for variety
         k_tests = df[df["Test_Type"].str.contains("K", na=False)].head(top_k // 2)
         p_tests = df[df["Test_Type"].str.contains("P", na=False)].head(top_k // 2)
         remaining = df[~df["Test_Type"].str.contains("K|P", na=False)].head(top_k - len(k_tests) - len(p_tests))
@@ -90,15 +100,18 @@ class SHLRecommender:
         combined = pd.concat([k_tests, p_tests, remaining]).drop_duplicates(subset="Assessment_Url", keep="first")
         combined = combined.sort_values("score", ascending=False).head(top_k)
 
-        # Format results for UI
+        # Formatting final results for the frontend
         safe_data = []
         for _, row in combined.iterrows():
             url = str(row.get("Assessment_Url", "")).strip()
             decoded_url = urllib.parse.unquote(url)
+
+            # Extracting a readable name from the URL
             name_part = decoded_url.rstrip("/").split("/")[-1]
             display_name = re.sub(r"[-_]+", " ", name_part).strip().title()
             display_name = re.sub(r"\bNew\b", "– New", display_name)
 
+            # Fallback to original name if URL-derived name looks invalid
             if not display_name or display_name.lower() == "nan":
                 display_name = row.get("Assessment_Name", "SHL Assessment")
 
