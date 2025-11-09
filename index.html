@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHL Assessment Recommender</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #4661e6;
+      --secondary: #5a74f8;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --info: #1abc9c;
+      --purple: #8e44ad;
+      --teal: #16a085;
+      --background: #eef1fb;
+      --white: #ffffff;
+      --text-dark: #1f2333;
+      --text-light: #555b73;
+      --border: #e4e7f0;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: "Manrope", sans-serif;
+      background: radial-gradient(circle at top left, #f8faff, #eef1fb);
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: var(--text-dark);
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+      letter-spacing: -0.5px;
+    }
+
+    h3 {
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 25px;
+    }
+
+    .container {
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: 0 10px 25px var(--shadow);
+      padding: 35px 40px;
+      width: 100%;
+      max-width: 850px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8f9fd;
+      outline: none;
+      margin-bottom: 15px;
+      transition: 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 8px rgba(70, 97, 230, 0.25);
+      background: #fff;
+    }
+
+    button {
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      width: 100%;
+      margin-top: 10px;
+      transition: all 0.25s ease;
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 18px rgba(70, 97, 230, 0.3);
+    }
+
+    #loading {
+      margin-top: 10px;
+      color: var(--primary);
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 25px;
+      animation: fadeIn 0.4s ease;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--text-light);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+
+    td {
+      color: var(--text-dark);
+      font-size: 15px;
+    }
+
+    td a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    td a:hover {
+      text-decoration: underline;
+    }
+
+    tr:hover {
+      background: rgba(70, 97, 230, 0.05);
+      transition: 0.2s;
+    }
+
+    /* Tag container: wraps neatly after 4 tags */
+    td:nth-child(3) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+    }
+
+    /* Type Tags */
+    .tag {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    margin: 3px 5px 3px 0;
+    white-space: nowrap;
+    cursor: default;
+    transition: 0.2s ease;
+    }
+
+    /* Hover animation */
+    .tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    opacity: 0.95;
+    }
+
+    /* Tooltip styling */
+    .tag::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-dark);
+    color: white;
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    }
+
+    /* Tooltip arrow */
+    .tag::before {
+    content: "";
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--text-dark) transparent transparent transparent;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    }
+
+    /* Show tooltip on hover */
+    .tag:hover::after,
+    .tag:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-2px);
+    }
+
+    .tag.a { background: var(--warning); }
+    .tag.b { background: var(--info); }
+    .tag.c { background: var(--purple); }
+    .tag.d { background: var(--teal); }
+    .tag.e { background: #9b59b6; }
+    .tag.k { background: var(--primary); }
+    .tag.p { background: var(--success); }
+    .tag.s { background: var(--danger); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 750px) {
+      .container { padding: 25px; }
+      table { font-size: 13px; }
+      h1 { font-size: 1.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1>SHL Assessment Recommender</h1>
+  <h3>Model Accuracy: <span id="accuracy">Loading...</span></h3>
+
+  <div class="container">
+    <input id="query" placeholder="Enter a job description or query...">
+    <button onclick="recommend()">Get Recommendations</button>
+    <div id="loading">Analyzing your query and fetching SHL assessments...</div>
+
+    <table id="results" style="display:none;">
+      <thead>
+        <tr>
+          <th>Assessment Name</th>
+          <th>Assessment URL</th>
+          <th>Test Type</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function fetchAccuracy() {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/metrics');
+        const data = await res.json();
+        document.getElementById('accuracy').textContent = data["Mean Recall@10"] || "N/A";
+      } catch {
+        document.getElementById('accuracy').textContent = "Unavailable";
+      }
+    }
+
+    async function recommend() {
+      const query = document.getElementById('query').value.trim();
+      const loading = document.getElementById('loading');
+      const table = document.getElementById('results');
+      const tbody = table.querySelector('tbody');
+      tbody.innerHTML = '';
+      if (!query) return alert('Please enter a query.');
+
+      loading.style.display = 'block';
+      table.style.display = 'none';
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        const recommendations = data.recommended_assessments || [];
+        if (recommendations.length === 0) {
+          loading.style.display = 'none';
+          alert('No matching assessments found.');
+          return;
+        }
+
+        loading.style.display = 'none';
+        table.style.display = 'table';
+
+        // Tooltip definitions for test types
+        const typeDescriptions = {
+          A: "Ability & Aptitude",
+          B: "Biodata & Situational Judgement",
+          C: "Competencies",
+          D: "Development & 360° Feedback",
+          E: "Assessment Exercises",
+          K: "Knowledge & Skills",
+          P: "Personality & Behavior",
+          S: "Simulations"
+        };
+
+        recommendations.forEach(item => {
+          const row = document.createElement('tr');
+
+          // Assessment Name
+          const nameCell = document.createElement('td');
+          nameCell.textContent = item.name || "SHL Assessment";
+
+          // Assessment URL
+          const urlCell = document.createElement('td');
+          urlCell.innerHTML = `<a href="${item.url}" target="_blank">${item.url}</a>`;
+
+          // Test Type
+          const typeCell = document.createElement('td');
+          let types = [];
+
+          if (Array.isArray(item.test_type)) {
+            types = item.test_type;
+          } else if (typeof item.test_type === "string") {
+            types = item.test_type.replace(/,/g, ' ').split(/\s+/).filter(t => t);
+          }
+
+          typeCell.innerHTML = types.map(t => {
+            const upper = t.toUpperCase();
+            const tooltip = typeDescriptions[upper] || "Unknown Test Type";
+            return `<span class="tag ${t.toLowerCase()}" data-tooltip="${tooltip}">${upper}</span>`;
+          }).join('');
+
+          row.appendChild(nameCell);
+          row.appendChild(urlCell);
+          row.appendChild(typeCell);
+          tbody.appendChild(row);
+        });
+
+      } catch (err) {
+        loading.style.display = 'none';
+        alert('Error fetching recommendations: ' + err.message);
+        console.error('❌ API Error:', err);
+      }
+    }
+
+    fetchAccuracy();
+  </script>
+</body>
+</html>
