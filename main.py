@@ -87,6 +87,6 @@ def serve_frontend():
     """
     return FileResponse("index.html")
 
-app.mount("/",
-StaticFiles(directory=os.getcwd(),
-html=True), name="static")
+app.mount("/static",
+StaticFiles(directory="static"),
+name="static")
