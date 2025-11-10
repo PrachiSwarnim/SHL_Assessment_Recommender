@@ -85,7 +85,7 @@ def serve_frontend():
     Serves the main HTML interface for the application.
     This lets users type a job query and see assessment results visually.
     """
-    return FileResponse("index.html")
+    return FileResponse(os.path.join("static", "index.html"))
 
 app.mount("/static",
 StaticFiles(directory="static"),
