@@ -39,7 +39,7 @@ class QueryInput(BaseModel):
 
 
 # Health check
-@app.get("/health")
+@app.get("/api/health")
 def health_check():
     return {"status": "ok"}
 
@@ -56,7 +56,7 @@ async def preflight_handler(request: Request, full_path: str):
 
 
 # Main recommendation route
-@app.post("/recommend")
+@app.post("/api/recommend")
 async def recommend(input: QueryInput):
     """
     Accepts a text query and returns top SHL assessment recommendations.
