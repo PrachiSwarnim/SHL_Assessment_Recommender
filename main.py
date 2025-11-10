@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, FileResponse
 import pandas as pd
 from model import SHLRecommender
+from fastapi.staticfiles import StaticFiles
+import os
 
 # Initializing FastAPI application
 app = FastAPI(title="SHL Assessment Recommendation API (TF-IDF + SHL Catalog)")
@@ -84,3 +86,7 @@ def serve_frontend():
     This lets users type a job query and see assessment results visually.
     """
     return FileResponse("index.html")
+
+app.mount("/",
+StaticFiles(directory=os.getcwd(),
+html=True), name="static")
