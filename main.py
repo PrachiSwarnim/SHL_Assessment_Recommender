@@ -90,9 +90,18 @@ async def recommend(input: QueryInput):
 
 # Serve frontend HTML
 @app.get("/", response_class=HTMLResponse)
-def serve_frontend():
-    return FileResponse(os.path.join("static", "index.html"))
-
+async def serve_frontend():
+    """
+    Serve the main HTML directly from backend, bypassing Render's static cache.
+    """
+    with open(os.path.join("static", "index.html"), "r", encoding="utf-8") as f:
+        html_content = f.read()
+    # adding cache-control header
+    return HTMLResponse(content=html_content, headers={
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
 
 # Disabling caching for all responses
 @app.middleware("http")
