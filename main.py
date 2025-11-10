@@ -7,6 +7,7 @@ import pandas as pd
 from model import SHLRecommender
 from fastapi.staticfiles import StaticFiles
 import os
+from fastapi import Request
 
 # Initializing FastAPI application
 app = FastAPI(title="SHL Assessment Recommendation API (TF-IDF + SHL Catalog)")
@@ -87,6 +88,10 @@ def serve_frontend():
     """
     return FileResponse(os.path.join("static", "index.html"))
 
+@app.options("/recommend")
+async def options_recommend(request: Request):
+    return {"status": "ok"}
+    
 app.mount("/static",
 StaticFiles(directory="static"),
 name="static")
