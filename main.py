@@ -88,7 +88,7 @@ async def recommend(input: QueryInput):
         return {"error": str(e)}
 
 
-# Serve frontend HTML
+# Serving frontend HTML
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """
